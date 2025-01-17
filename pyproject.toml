@@ -6,8 +6,15 @@ readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "accelerate>=1.0.1",
+    "ai2-olmo>=0.2.2",
     "bigcode-eval",
+    "datasets>=3.1.0",
+    "dolma>=1.0.8",
+    "editables>=0.5",
+    "evalplus>=0.3.1",
     "fastai>=2.7.18",
+    "flash-attn>=2.7.0.post2",
+    "hatchling>=1.26.3",
     "jupyterlab>=4.2.5",
     "llama-stack>=0.0.49",
     "lovely-tensors>=0.1.17",
@@ -16,7 +23,9 @@ dependencies = [
     "numpy>=2.1.2",
     "ruff>=0.7.2",
     "seaborn>=0.13.2",
+    "torch>=2.5.1",
     "transformers>=4.46.1",
+    "vllm>=0.1.2",
 ]
 
 
@@ -34,4 +43,4 @@ build-backend = "hatchling.build"
 packages = ["src/attribution"]
 
 [tool.uv.sources]
-bigcode-eval = { git = "https://github.com/bigcode-project/bigcode-evaluation-harness" }
+bigcode-eval = { path = "../bigcode-evaluation-harness", editable = true }

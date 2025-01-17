@@ -6,7 +6,7 @@ import argparse
 import os
 
 import torch
-from apps_dataset import APPSBaseDataset
+from attribution.tune.apps_dataset import APPSBaseDataset
 from datasets import load_dataset
 from transformers import (AutoModelForCausalLM, Trainer, TrainingArguments,
                           logging, set_seed)

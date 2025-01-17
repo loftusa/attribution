@@ -1,4 +1,7 @@
-<<<<<<< HEAD
+# alex additions
+results/*
+data/*
+
 # Python-generated files
 __pycache__/
 *.py[oc]
@@ -9,7 +12,6 @@ wheels/
 
 # Virtual environments
 .venv
-=======
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -172,4 +174,3 @@ cython_debug/
 #  and can be added to the global gitignore or merged into this file.  For a more nuclear
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #.idea/
->>>>>>> 825bb25407e90df1bdb85519af9a13f954bbf86d

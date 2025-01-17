@@ -1,6 +1,16 @@
+import gzip
 import os
 import re
 import json
+from fastcore.all import Path
+
+def load_results(path: Path) -> dict:
+    """Load results from either .json or .json.gz file"""
+    if path.suffix == ".gz":
+        with gzip.open(path, "rt") as f:
+            return json.load(f)
+    else:
+        return json.loads(path.read_text())
 
 def extract_code_snippets_from_text(text):
     """
