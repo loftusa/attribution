@@ -1,6 +1,7 @@
 # alex additions
 results/*
 data/*
+*humanevalplus.json
 
 # Python-generated files
 __pycache__/
