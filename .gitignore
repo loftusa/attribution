@@ -2,6 +2,7 @@
 results/*
 data/*
 *humanevalplus.json
+*results.json
 
 # Python-generated files
 __pycache__/
