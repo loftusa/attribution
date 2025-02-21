@@ -1,9 +1,11 @@
 {
-  "folders": [
-	{
-		"name": "code_llm",
-		"path": "../.."
-	}
-],
-  "settings": {}
+	"folders": [
+		{
+			"name": "code_llm",
+			"path": "../.."
+		}
+	],
+    "settings": {
+        "editor.detectIndentation": false
+    }
 }

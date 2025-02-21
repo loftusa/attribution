@@ -3,6 +3,7 @@ import json
 import os
 import warnings
 
+import numpy as np
 import torch
 import transformers
 from accelerate import Accelerator
@@ -67,7 +68,7 @@ additional_args = {
     "load_in_8bit": False,
     "load_in_4bit": False,
     "left_padding": False,
-    "limit": 1,  # DEBUGGING
+    "limit": None,
     "limit_start": 0,
     "save_every_k_tasks": -1,
     "postprocess": True,
@@ -131,26 +132,46 @@ if not Path(results_path).exists():
         print('using evaluation_results.json')
         results_path = results_path.parent / 'evaluation_results.json'
 #%%
+from bigcode_eval.tasks.custom_metrics.code_eval import estimate_pass_at_k
+import numpy as np
+generate_new_generations = False
 if Path(generations_path).exists() and not generate_new_generations:
   if Path(results_path).exists():
-      with open(results_path, 'r') as f:
-          results = json.load(f)
-      with open(generations_path, 'r') as f:
-          generations = json.load(f)
+    with open(results_path, 'r') as f:
+        results = json.load(f)
+    with open(generations_path, 'r') as f:
+        generations = json.load(f)
+    total, correct = [], []
+    for result in results.values():
+        result.sort()
+        passed = [r[1]["passed"] for r in result]
+        total.append(len(passed))
+        correct.append(sum(passed))
+    total = np.array(total)
+    correct = np.array(correct)
+
+    ks = 10
+    if not isinstance(ks, (list, tuple)):
+        ks = [ks]
+    pass_at_k = {f"pass@{k}": estimate_pass_at_k(total, correct, k).mean() for k in ks if (total >= k).all()}
+    print(f"pass_at_k: {pass_at_k}")
+    
   else:
-      with open(generations_path, 'r') as f:
-          generations = json.load(f)
-          dataset = task.get_dataset()
-          n_tasks = min(args_namespace.limit, len(dataset) - args_namespace.limit_start) if args_namespace.limit else len(dataset)
-          if not args_namespace.limit:
-              n_tasks -= args_namespace.limit_start
-          references = [task.get_reference(dataset[i]) for i in range(args_namespace.limit_start, args_namespace.limit_start+n_tasks)]
-          pass_at_k, results = compute_code_eval(references=references, predictions=generations, k=task.k, num_workers = task.num_workers, timeout=task.timeout)
+    with open(generations_path, 'r') as f:
+        generations = json.load(f)
+        dataset = task.get_dataset()
+        n_tasks = min(args_namespace.limit, len(dataset) - args_namespace.limit_start) if args_namespace.limit else len(dataset)
+        if not args_namespace.limit:
+            n_tasks -= args_namespace.limit_start
+        references = [task.get_reference(dataset[i]) for i in range(args_namespace.limit_start, args_namespace.limit_start+n_tasks)]
+        pass_at_k, results = compute_code_eval(references=references, predictions=generations, k=task.k, num_workers = task.num_workers, timeout=task.timeout)
 else:
     print('creating generations and references')
     generations, references = evaluator.generate_text(task_name)
     pass_at_k, results = compute_code_eval(references=references, predictions=generations, k=task.k, num_workers = task.num_workers, timeout=task.timeout)
 
+
+# switch to strs for results keys
 #%%
 from pprint import pprint
 
@@ -187,7 +208,7 @@ def print_generations(generations, results, problem_index=None, prompt_only=Fals
             print('\n' + '='*100 + '\n')
 
 # print_results(results)
-print_generations(generations, results)
+# print_generations(generations, results)
 #%%
 def get_pass_rates(results):
     """Calculate pass rates for each problem in results"""
@@ -350,9 +371,23 @@ with open(generations_path, 'w') as f:
     json.dump(generations, f)
 
 # Save results
-results_path = args_namespace.metric_output_path
+results_path = args_namespace.metric_output_path.parent / (args_namespace.metric_output_path.stem + "_detailed.json")
 with open(results_path, 'w') as f:
     json.dump(results, f)
+
+
+# save config
+config_path = args_namespace.save_generations_path.parent / 'config.json'
+config = {}
+config[task_name] = pass_at_k
+config['config'] = vars(args_namespace).copy()
+# turn any Path objects in 'config' into strings
+for key, value in config['config'].items():
+    if isinstance(value, Path):
+        config['config'][key] = str(value)
+with open(config_path, 'w') as f:
+    json.dump(config, f)
+
 
 # Save plot
 plot_base = args_namespace.save_generations_path.parent / 'pass_rates'
@@ -369,4 +404,5 @@ print(f"- Generations: {generations_path}")
 print(f"- Results: {results_path}")
 print(f"- Plot: {plot_base}_(bar, heatmap, line).jpg")
 print(f"- Pass Rates: {pass_rates_path}")
+print(f"- Config: {config_path}")
 #%%
