@@ -60,7 +60,7 @@ additional_args = {
     "revision": None,
     "use_auth_token": False,
     "trust_remote_code": False,
-    "tasks": "humanevalplus",
+    "tasks": "cruxeval",
     "instruction_tokens": None,
     "batch_size": 8,
     "max_length_generation": 512,
@@ -68,7 +68,7 @@ additional_args = {
     "load_in_8bit": False,
     "load_in_4bit": False,
     "left_padding": False,
-    "limit": None,
+    "limit": None, 
     "limit_start": 0,
     "save_every_k_tasks": -1,
     "postprocess": True,
@@ -76,12 +76,12 @@ additional_args = {
     "generation_only": False,
     "load_generations_path": None,
     "load_data_path": None,
-    "metric_output_path": base_dir / "evaluation_results.json",  # Use command line base_dir
+    "metric_output_path": base_dir / "cruxeval_evaluation_results.json",  # Use command line base_dir
     "save_generations": True,
     "load_generations_intermediate_paths": None,
-    "save_generations_path": base_dir / "humanevalplus_generations.json",  # Use command line base_dir
+    "save_generations_path": base_dir / "cruxeval_generations.json",  # Use command line base_dir
     "save_references": True,
-    "save_references_path": base_dir / "humanevalplus_references.json",  # Use command line base_dir
+    "save_references_path": base_dir / "cruxeval_references.json",  # Use command line base_dir
     "prompt": "prompt",
     "max_memory_per_gpu": None,
     "check_references": False,
@@ -106,7 +106,7 @@ model = accelerator.prepare(model)
 # Evaluate the "humaneval" task. You can pick other tasks if desired.
 # The evaluate() method will call generate_text(...) internally
 # and then call the appropriate Task.process_results(...)
-task_name = "humanevalplus"
+task_name = "cruxeval"
 # results = evaluator.evaluate(task_name)
 #%%
 from bigcode_eval.tasks import get_task
@@ -121,7 +121,10 @@ task = get_task(task_name)
 generations_path = Path(args_namespace.save_generations_path).parent / 'generations.json'
 results_path = Path(args_namespace.save_generations_path).parent / 'results.json'
 
-# messy code, but the names are different beacuse I messed up the saving and I don't wanna rerun
+cruxeval_generations_path = args_namespace.save_generations_path
+cruxeval_results_path = args_namespace.metric_output_path.parent / (args_namespace.metric_output_path.stem + "_detailed.json")
+
+'''# messy code, but the names are different beacuse I messed up the saving and I don't wanna rerun
 # can delete later
 if not Path(generations_path).exists():
     if (generations_path.parent / 'humanevalplus_generations.json').exists():
@@ -131,15 +134,50 @@ if not Path(results_path).exists():
     if (results_path.parent / 'evaluation_results.json').exists():
         print('using evaluation_results.json')
         results_path = results_path.parent / 'evaluation_results.json'
+'''
+
+# Force new generations for CruxEval
+if not Path(cruxeval_generations_path).exists() or generate_new_generations:
+    print('Creating new CruxEval generations and references...')
+    generations, references = evaluator.generate_text(task_name)
+    pass_at_k, results = compute_code_eval(
+        references=references, 
+        predictions=generations, 
+        k=task.k, 
+        num_workers=task.num_workers, 
+        timeout=task.timeout
+    )
+    
+    # Save immediately after generation
+    print(f"Saving generations to {cruxeval_generations_path}")
+    with open(cruxeval_generations_path, 'w') as f:
+        json.dump(generations, f)
+    
+    print(f"Saving results to {cruxeval_results_path}")
+    with open(cruxeval_results_path, 'w') as f:
+        json.dump(results, f)
+else:
+    print(f'Loading existing generations from {cruxeval_generations_path}')
+    with open(cruxeval_generations_path, 'r') as f:
+        generations = json.load(f)
+    if Path(cruxeval_results_path).exists():
+        with open(cruxeval_results_path, 'r') as f:
+            results = json.load(f)
+    else:
+        # Compute results if they don't exist
+        dataset = task.get_dataset()
+        references = [task.get_reference(d) for d in dataset]
+        pass_at_k, results = compute_code_eval(references=references, predictions=generations, k=task.k, num_workers = task.num_workers, timeout=task.timeout)
+
 #%%
 from bigcode_eval.tasks.custom_metrics.code_eval import estimate_pass_at_k
 import numpy as np
 generate_new_generations = False
-if Path(generations_path).exists() and not generate_new_generations:
-  if Path(results_path).exists():
-    with open(results_path, 'r') as f:
+if Path(cruxeval_generations_path).exists() and not generate_new_generations:
+  if Path(cruxeval_results_path).exists():
+    with open(cruxeval_results_path, 'r') as f:
         results = json.load(f)
-    with open(generations_path, 'r') as f:
+    with open(cruxeval_generations_path, 'r') as f:
         generations = json.load(f)
     total, correct = [], []
     for result in results.values():
@@ -157,7 +195,7 @@ if Path(generations_path).exists() and not generate_new_generations:
     print(f"pass_at_k: {pass_at_k}")
     
   else:
-    with open(generations_path, 'r') as f:
+    with open(cruxeval_generations_path, 'r') as f:
         generations = json.load(f)
         dataset = task.get_dataset()
         n_tasks = min(args_namespace.limit, len(dataset) - args_namespace.limit_start) if args_namespace.limit else len(dataset)
@@ -366,18 +404,29 @@ def plot_pass_rates_line(results, window=10, save_path=None):
 #%%
 
 # Save generations
-generations_path = args_namespace.save_generations_path
-with open(generations_path, 'w') as f:
+cruxeval_generations_path = args_namespace.save_generations_path
+with open(cruxeval_generations_path, 'w') as f:
     json.dump(generations, f)
 
 # Save results
-results_path = args_namespace.metric_output_path.parent / (args_namespace.metric_output_path.stem + "_detailed.json")
-with open(results_path, 'w') as f:
+cruxeval_results_path = args_namespace.metric_output_path.parent / (args_namespace.metric_output_path.stem + "_detailed.json")
+with open(cruxeval_results_path, 'w') as f:
     json.dump(results, f)
 
 
-# save config
-config_path = args_namespace.save_generations_path.parent / 'config.json'
+# Save plot with task-specific names
+task_prefix = "cruxeval"  # Use this to differentiate from HumanEval+
+plot_base = args_namespace.save_generations_path.parent / f'{task_prefix}_pass_rates'
+plot_pass_rates(results, save_path=str(plot_base) + '_bar.jpg')
+plot_pass_rates_heatmap(results, save_path=str(plot_base) + '_heatmap.jpg')
+plot_pass_rates_line(results, save_path=str(plot_base) + '_line.jpg')
+
+# Also update the pass rates file name
+pass_rates_path = args_namespace.save_generations_path.parent / f'{task_prefix}_pass_rates.json'
+save_pass_rates(problem_ids, pass_rates, save_path=pass_rates_path)
+
+# And the config file
+config_path = args_namespace.save_generations_path.parent / f'{task_prefix}_config.json'
 config = {}
 config[task_name] = pass_at_k
 config['config'] = vars(args_namespace).copy()
@@ -388,20 +437,9 @@ for key, value in config['config'].items():
 with open(config_path, 'w') as f:
     json.dump(config, f)
 
-
-# Save plot
-plot_base = args_namespace.save_generations_path.parent / 'pass_rates'
-plot_pass_rates(results, save_path=str(plot_base) + '_bar.jpg')
-plot_pass_rates_heatmap(results, save_path=str(plot_base) + '_heatmap.jpg')
-plot_pass_rates_line(results, save_path=str(plot_base) + '_line.jpg')
-
-# Save pass rates
-pass_rates_path = args_namespace.save_generations_path.parent / 'pass_rates.json'
-save_pass_rates(problem_ids, pass_rates, save_path=pass_rates_path)
-
 print(f"Saved all outputs to {args_namespace.save_generations_path.parent}:")
-print(f"- Generations: {generations_path}")
-print(f"- Results: {results_path}")
+print(f"- Generations: {cruxeval_generations_path}")
+print(f"- Results: {cruxeval_results_path}")
 print(f"- Plot: {plot_base}_(bar, heatmap, line).jpg")
 print(f"- Pass Rates: {pass_rates_path}")
 print(f"- Config: {config_path}")

@@ -18,11 +18,11 @@ import torch
 
 PROMPT_TEMPLATE = '''\
 Return only the output of the following code, given the input, with no other commentary or explanation:
+
 {}
 
 input: {}
-output:
-'''
+output: {}'''
 
 
 class CruxEvalUtil:
@@ -72,11 +72,11 @@ class CruxEvalUtil:
         code = row.select('code').item()
         true_input = row.select('input').item()
         true_output = row.select('output').item()
-        self.prompt = PROMPT_TEMPLATE.format(code, true_input)
+        self.prompt = PROMPT_TEMPLATE.format(code, '{}', '{}')
 
 
 
-        return self.prompt, true_output
+        return self.prompt, true_input, true_output
 
 
 def load_results(path: Path) -> dict:
@@ -86,6 +86,7 @@ def load_results(path: Path) -> dict:
             return json.load(f)
     else:
         return json.loads(path.read_text())
+
 
 def extract_code_snippets_from_text(text):
     """
