@@ -100,8 +100,8 @@ for key, value in MODELS.items():
 # Initialize CruxEvalUtil and model
 ce = CruxEvalUtil()
 
+#%%
 print(f"Loading model: {model_name}")
-
 # Load tokenizer with optimized settings
 tokenizer = AutoTokenizer.from_pretrained(
     model_name,
@@ -129,6 +129,52 @@ if torch.cuda.is_available():
     print(f"GPU memory after loading model: {used_memory:.2f}GB used / {total_memory:.2f}GB total ({free_memory:.2f}GB free)")
 
 #%%
+prompt, true_in, true_out = ce.output_full(2)
+formatted_prompt = prompt.replace('{input}', true_in).replace('{output}', '')
+print(formatted_prompt)
+
+#%%
+print("SANITY CHECK", "\n---------------")
+prompt, true_in, true_out = ce.output_full(0)
+print(prompt, '\n----')
+
+formatted_prompt = prompt.replace('{input}', true_in).replace('{output}', '')
+print(f"Formatted prompt: {formatted_prompt}", '\n----')
+
+tokens = tokenizer.encode(formatted_prompt)
+print(f"Tokens: {tokens}", '\n----')
+
+input_id_length = len(tokens)
+
+inputs = tokenizer(formatted_prompt, return_tensors='pt', padding=True, truncation=True, max_length=2048).to(model.device)
+with torch.no_grad():
+    outputs = model.generate(
+        inputs.input_ids, 
+        attention_mask=inputs.attention_mask,
+        max_new_tokens=100,
+        do_sample=True,
+        temperature=0.2,
+        pad_token_id=tokenizer.eos_token_id,
+        use_cache=True,
+        early_stopping=True
+    )
+print(outputs, '\n----')
+
+input_length = input_id_length - 1
+print(f"Input length: {input_length}", '\n----')
+
+generated_tokens = outputs[0]
+print(f"Generated tokens: {generated_tokens}", '\n----')
+print(f"generated text: {tokenizer.decode(generated_tokens, skip_special_tokens=True)}", '\n----')
+
+clipped = generated_tokens[input_length:]
+print(f"clipped: {clipped}", '\n----')
+print(f"clipped text: {tokenizer.decode(clipped, skip_special_tokens=True)}", '\n----')
+
+
+
+
+#%%
 # Function to evaluate a single problem using standard Transformers
 def evaluate_problem(model, tokenizer, problem_id: int, max_tokens: int = 100) -> tuple[bool, str, str]:
     """
@@ -147,8 +193,9 @@ def evaluate_problem(model, tokenizer, problem_id: int, max_tokens: int = 100) -
         # Get problem
         prompt, true_in, true_out = ce.output_full(problem_id)
         
-        # Format prompt with input but leave output empty
-        formatted_prompt = prompt.format(true_in, "")
+        # Format prompt with input but leave output empty by replacing placeholders directly
+        # This avoids issues with inputs that contain format specifiers
+        formatted_prompt = prompt.replace('{input}', true_in).replace('{output}', '')
         
         # Tokenize the prompt
         inputs = tokenizer(formatted_prompt, return_tensors="pt").to(model.device)
@@ -158,8 +205,8 @@ def evaluate_problem(model, tokenizer, problem_id: int, max_tokens: int = 100) -
             outputs = model.generate(
                 inputs.input_ids,
                 max_new_tokens=max_tokens,
-                do_sample=False,  # Deterministic generation
-                num_beams=1,      # No beam search for speed
+                do_sample=True,  
+                temperature=0.2,
                 pad_token_id=tokenizer.eos_token_id,
                 use_cache=True,   # Use KV cache for faster generation
                 early_stopping=True
@@ -185,6 +232,103 @@ def evaluate_problem(model, tokenizer, problem_id: int, max_tokens: int = 100) -
         print(f"Error evaluating problem {problem_id}: {str(e)}")
         return False, str(e), f"Error: {str(e)}"
 
+# Function to evaluate a batch of problems using a single forward pass
+def evaluate_batch(model, tokenizer, problem_ids: list[int], max_tokens: int = 100) -> list[tuple[bool, str, str]]:
+    """
+    Evaluate a batch of CruxEval problems in a single forward pass.
+    
+    Args:
+        model: The model
+        tokenizer: The tokenizer
+        problem_ids: List of problem IDs to evaluate in this batch
+        max_tokens: Maximum number of tokens to generate
+        
+    Returns:
+        List of tuples (is_correct, generated_output, true_output) for each problem
+    """
+    try:
+        # Prepare all prompts
+        batch_prompts = []
+        true_outputs = []
+        problem_inputs = []
+        
+        for problem_id in problem_ids:
+            prompt, true_in, true_out = ce.output_full(problem_id)
+            # Format prompt with input but leave output empty
+            formatted_prompt = prompt.replace('{input}', true_in).replace('{output}', '')
+            batch_prompts.append(formatted_prompt)
+            true_outputs.append(true_out)
+            problem_inputs.append(true_in)
+        
+        # Calculate input lengths before tokenization (for token extraction later)
+        input_ids_lengths = []
+        for prompt in batch_prompts:
+            tokens = tokenizer.encode(prompt)
+            input_ids_lengths.append(len(tokens))
+        
+        # Tokenize as a batch
+        inputs = tokenizer(
+            batch_prompts, 
+            return_tensors="pt", 
+            padding=True,
+            truncation=True,
+            max_length=2048  # Set an appropriate max length
+        ).to(model.device)
+        
+        # Generate outputs for the entire batch
+        with torch.no_grad():
+            outputs = model.generate(
+                inputs.input_ids,
+                attention_mask=inputs.attention_mask,
+                max_new_tokens=max_tokens,
+                do_sample=True,
+                temperature=0.2,
+                pad_token_id=tokenizer.eos_token_id,
+                use_cache=True,
+                early_stopping=True
+            )
+        
+        # Process results
+        batch_results = []
+        for i, (output, true_out, problem_id, true_in) in enumerate(zip(outputs, true_outputs, problem_ids, problem_inputs)):
+            # Get the original input length for this example (subtract 1 for correct slicing)
+            input_length = input_ids_lengths[i] - 1  # -1 because we want to start extracting from the next token
+            
+            # Extract only the newly generated tokens for this example
+            generated_tokens = output[input_length:]
+            full_generated_text = tokenizer.decode(generated_tokens, skip_special_tokens=True)
+            
+            # Extract only the part after "output:" if it exists
+            if "output:" in full_generated_text.lower():
+                # Find the position of "output:" (case insensitive)
+                output_pos = full_generated_text.lower().find("output:")
+                # Extract everything after "output:" (including the 8 characters for "output:")
+                generated = full_generated_text[output_pos + 7:].strip()
+            else:
+                # If "output:" is not found, use the full generated text
+                generated = full_generated_text.strip()
+            
+            # Check if output matches
+            is_correct = generated.strip() == true_out.strip()
+            
+            # Print detailed info for correct outputs or sample problems
+            if is_correct or problem_id % 50 == 0:
+                print(f"\nProblem ID: {problem_id}")
+                print(f"Input: {repr(true_in)}")
+                print(f"Full Generated: {full_generated_text}")
+                print(f"Extracted Output: {generated}")
+                print(f"Expected: {true_out}")
+                print(f"Correct: {is_correct}")
+            
+            batch_results.append((is_correct, full_generated_text, generated, true_out))
+        
+        return batch_results
+    
+    except Exception as e:
+        print(f"Error evaluating batch {problem_ids}: {str(e)}")
+        # Return failed results for each problem in the batch
+        return [(False, str(e), f"Error: {str(e)}") for _ in problem_ids]
+
 #%%
 # Evaluate all problems with batch processing for better performance
 num_problems = args.num_problems
@@ -203,27 +347,33 @@ except FileNotFoundError:
     start_idx = 0
     print("Starting fresh evaluation")
 
-print(f"Evaluating {num_problems} problems in batches of {batch_size}...")
+# Adjust batch size based on model and available GPU memory
+# Use a smaller batch size initially to be safer
+adjusted_batch_size = min(batch_size, 64)  # Start with max 64 examples per batch 
+print(f"Evaluating {num_problems} problems in batches of {adjusted_batch_size}...")
 start_time = time.time()
 
-# Process problems in batches
-for batch_start in tqdm(range(start_idx, num_problems, batch_size)):
-    batch_end = min(batch_start + batch_size, num_problems)
-    batch_results = []
+# Process problems in true batches
+for batch_start in tqdm(range(start_idx, num_problems, adjusted_batch_size)):
+    batch_end = min(batch_start + adjusted_batch_size, num_problems)
+    problem_ids = list(range(batch_start, batch_end))
     
-    # Process each problem in the current batch
-    for i in range(batch_start, batch_end):
-        is_correct, generated, true_out = evaluate_problem(model, tokenizer, i)
-        
-        batch_results.append({
-            "problem_id": i,
+    # Process the entire batch at once
+    batch_results = evaluate_batch(model, tokenizer, problem_ids, max_tokens=100)
+    
+    # Format results for storage
+    formatted_results = []
+    for i, (is_correct, full_generated_text, generated, true_out) in enumerate(batch_results):
+        formatted_results.append({
+            "problem_id": problem_ids[i],
             "is_correct": is_correct,
+            "full_generated_text": full_generated_text,
             "generated": generated,
             "true_output": true_out
         })
     
     # Add batch results to overall results
-    results.extend(batch_results)
+    results.extend(formatted_results)
     
     # Save checkpoint after each batch
     with open(checkpoint_file, "w") as f:
@@ -275,21 +425,3 @@ if os.path.exists(checkpoint_file):
 # If running as a script, exit here
 if not sys.argv[0].endswith('ipykernel_launcher.py'):
     sys.exit(0)
-
-#%%
-# The rest of your notebook remains unchanged for causal tracing
-# When you're ready to use the correct problems for causal tracing,
-# you can access them from the correct_problems list
-
-# For example:
-if len(correct_problems) > 0:
-    problem_id = correct_problems[0]
-    prompt, true_in, true_out = ce.output_full(problem_id)
-    print(f"Using problem {problem_id} for causal tracing")
-    print(f"Input: {true_in}")
-    print(f"Expected output: {true_out}")
-    
-    # Your causal tracing code would go here
-    # ...
-
-# The remaining cells can be kept as they are

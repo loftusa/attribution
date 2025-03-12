@@ -265,7 +265,7 @@ def plot_venn_like_comparison(model_results, output_path):
 
 # Generate all plots
 plot_model_accuracy(model_accuracy, output_dir / "cruxeval_model_accuracy.png")
-plot_problem_heatmap(problem_accuracy, output_dir / "cruxeval_problem_heatmap.png", max_problems=50)
+plot_problem_heatmap(problem_accuracy, output_dir / "cruxeval_problem_heatmap.png", max_problems=800)
 plot_problem_line(problem_accuracy, output_dir / "cruxeval_problem_line.png")
 plot_venn_like_comparison(model_results, output_dir / "cruxeval_model_comparison.png")
 

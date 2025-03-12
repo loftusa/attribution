@@ -17,12 +17,10 @@ import torch
 
 
 PROMPT_TEMPLATE = '''\
-Return only the output of the following code, given the input, with no other commentary or explanation:
-
-{}
-
-input: {}
-output: {}'''
+Given a function and an input, provide ONLY the output value that would result from executing the function with the given input.
+function: {code}
+input: {input}
+output: {output}'''
 
 
 class CruxEvalUtil:
@@ -39,13 +37,16 @@ class CruxEvalUtil:
         return self.df.filter(pl.col('id') == f"sample_{problem_id}")
 
 
-    def output_full(self, problem_id: int) -> tuple[str, str]:
+    def output_full(self, problem_id: int) -> tuple[str, str, str]:
         """
-        taking id as input and using the polars df already loaded, output both the prompt and the true output as a tuple in the form:
+        taking id as input and using the polars df already loaded, output both the prompt, true input, and true output as a tuple.
 
+        Returns:
+            tuple[str, str, str]: A tuple containing (prompt, true_input, true_output)
+            
+        The prompt format is:
         '''
-        {function}
-
+        function: {function}
         input: {true_input}
         output: {true_output}
         '''
@@ -54,7 +55,7 @@ class CruxEvalUtil:
 
         (
         ''' 
-        def f(text):
+        function: def f(text):
             new_text = list(text)
             for i in '+':
                 if i in new_text:
@@ -64,7 +65,7 @@ class CruxEvalUtil:
         input: 'hbtofdeiequ' 
         output: 
         ''' 
-        ), ('hbtofdeiequ')
+        ), ('hbtofdeiequ', 'hbtofdeiequ')
 
         """ 
         # get the prompt and true output
@@ -72,11 +73,12 @@ class CruxEvalUtil:
         code = row.select('code').item()
         true_input = row.select('input').item()
         true_output = row.select('output').item()
-        self.prompt = PROMPT_TEMPLATE.format(code, '{}', '{}')
-
-
-
-        return self.prompt, true_input, true_output
+        
+        # Create a fixed prompt template for this problem
+        # Replace named placeholders with actual content, but leave {} for input and output
+        fixed_prompt = PROMPT_TEMPLATE.replace('{code}', code)
+        
+        return fixed_prompt, true_input, true_output
 
 
 def load_results(path: Path) -> dict:

@@ -1,0 +1,1 @@
+from attribution.utils import CruxEvalUtil; ce = CruxEvalUtil(); prompt, true_in, true_out = ce.output_full(166); print(f"Input: {repr(true_in)}\nExpected: {repr(true_out)}"); try: formatted = prompt.format(true_in, ""); print("Formatted successfully!"); except Exception as e: print(f"Error: {e}")

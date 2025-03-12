@@ -6,9 +6,9 @@ mkdir -p $OUTPUT_DIR
 
 # Array of models to evaluate
 MODELS=(
+    "dpo"
     "base"
     "sft"
-    "dpo"
     "instruct"
     "rm"
 )
@@ -23,7 +23,7 @@ for model in "${MODELS[@]}"; do
     python 07_evaluate_cruxeval.py \
         --model "$model" \
         --num_problems 800 \
-        --batch_size 8 \
+        --batch_size 512 \
         --output_dir "$OUTPUT_DIR"
     
     # Check if the evaluation was successful

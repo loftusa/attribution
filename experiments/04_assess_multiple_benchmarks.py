@@ -65,7 +65,7 @@ additional_args = {
     "batch_size": 8,
     "max_length_generation": 512,
     "precision": "bf16",
-    "load_in_8bit": False,
+    "load_in_8bit": True,
     "load_in_4bit": False,
     "left_padding": False,
     "limit": None, 
