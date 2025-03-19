@@ -22,7 +22,7 @@ import os
 import json
 import torch
 import einops
-import plotly.express as px
+import plotly.express as px # type: ignore
 from pathlib import Path
 from nnsight import LanguageModel
 from bigcode_eval.tasks import get_task
@@ -35,7 +35,7 @@ import sys
 
 from attribution.utils import CruxEvalUtil, CausalTracingInput, causal_trace, format_template
 
-from guidance import models, gen, guidance
+from guidance import models, gen, guidance # type: ignore
 
 # Parse command line arguments
 parser = argparse.ArgumentParser(description='Evaluate CruxEval problems with a specified model')
@@ -47,6 +47,7 @@ parser.add_argument('--batch_size', type=int, default=8,
                     help='Batch size for evaluation (default: 8)')
 parser.add_argument('--output_dir', type=str, default="../data",
                     help='Directory to save results (default: ../data)')
+parser.add_argument('--revision', type=str, default="main",)
 
 # Check if running as script or in interactive mode
 if not sys.argv[0].endswith('ipykernel_launcher.py'):
@@ -77,6 +78,8 @@ MODELS = {
     "dpo": "allenai/OLMo-2-1124-7B-DPO",
     "instruct": "allenai/OLMo-2-1124-7B-Instruct",
     "rm": "allenai/OLMo-2-1124-7B-RM",
+    "base13b": "allenai/OLMo-2-1124-13B",
+    "dpo13b": "allenai/OLMo-2-1124-13B-DPO"
 }
 
 # Get model name from command line or use default
@@ -102,12 +105,10 @@ ce = CruxEvalUtil()
 
 #%%
 print(f"Loading model: {model_name}")
+revision = args.revision
+
 # Load tokenizer with optimized settings
-tokenizer = AutoTokenizer.from_pretrained(
-    model_name,
-    use_fast=True,  # Use fast tokenizer
-    padding_side="left"  # Pad on the left for more efficient generation
-)
+tokenizer = AutoTokenizer.from_pretrained(model_name, revision=revision)
 
 # Initialize model with optimized settings
 model = AutoModelForCausalLM.from_pretrained(
@@ -115,7 +116,8 @@ model = AutoModelForCausalLM.from_pretrained(
     device_map="auto",  # Automatically distribute across available GPUs
     torch_dtype=torch.bfloat16,  # Use bfloat16 for faster computation
     low_cpu_mem_usage=True,  # Optimize CPU memory usage
-    use_cache=True  # Enable KV cache for faster generation
+    use_cache=True,  # Enable KV cache for faster generation
+    revision=revision
 )
 
 # Set model to evaluation mode

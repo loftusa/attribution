@@ -34,7 +34,9 @@ MODEL_NAMES = {
     "sft": "OLMo-2-1124-7B-SFT",
     "dpo": "OLMo-2-1124-7B-DPO",
     "instruct": "OLMo-2-1124-7B-Instruct",
-    "rm": "OLMo-2-1124-7B-RM"
+    "rm": "OLMo-2-1124-7B-RM",
+    "base13b": "OLMo-2-1124-13B",
+    "dpo13b": "OLMo-2-1124-13B-DPO"
 }
 
 # Load results for all models
