@@ -9,7 +9,6 @@ REVISIONS=(
 )
 
 # Loop through each revision and run the evaluation
-echo "=====================TEST RUN: ONLY ONE PROBLEM!!!================================================"
 model="allenai/OLMo-2-1124-7B-Instruct"
 for revision in "${REVISIONS[@]}"; do
     echo "====================================================="
@@ -20,15 +19,15 @@ for revision in "${REVISIONS[@]}"; do
     python 07_evaluate_cruxeval.py \
         --model "$model" \
         --revision "$revision" \
-        --num_problems 1 \
-        --batch_size 1 \
+        --num_problems 800 \
+        --batch_size 512 \
         --output_dir "$OUTPUT_DIR"
     
     # Check if the evaluation was successful
     if [ $? -eq 0 ]; then
-        echo "Completed evaluation for $model"
+        echo "Completed evaluation for $model, revision $revision"
     else
-        echo "Error evaluating $model"
+        echo "Error evaluating $model, revision $revision"
     fi
     
     echo "====================================================="
@@ -50,12 +49,13 @@ import os
 import pandas as pd
 
 output_dir = "$OUTPUT_DIR"
-models = ["base", "sft", "dpo", "instruct", "rm"]
+model = "$model"
+revisions = ["step_360", "step_300", "step_240", "step_180", "step_120", "step_60", "main"]
 
 results = []
-for model in models:
+for revision in revisions:
     try:
-        result_file = os.path.join(output_dir, f"cruxeval_results_{model}.json")
+        result_file = os.path.join(output_dir, f"cruxeval_results_{model}_{revision}.json")
         if os.path.exists(result_file):
             with open(result_file, "r") as f:
                 data = json.load(f)
@@ -66,14 +66,15 @@ for model in models:
             
             results.append({
                 "model": model,
+                "revision": revision,
                 "correct": correct_count,
                 "total": total_count,
                 "accuracy": accuracy
             })
         else:
-            print(f"Results file for {model} not found: {result_file}")
+            print(f"Results file for {model}, revision {revision} not found: {result_file}")
     except Exception as e:
-        print(f"Error processing results for {model}: {str(e)}")
+        print(f"Error processing results for {model}, revision {revision}: {str(e)}")
 
 if results:
     df = pd.DataFrame(results)
@@ -85,7 +86,7 @@ if results:
     
     # Print summary
     print("\nSummary of Results:")
-    print(df[["model", "correct", "total", "accuracy_pct"]].to_string(index=False))
+    print(df[["model", "revision", "correct", "total", "accuracy_pct"]].to_string(index=False))
     print(f"\nSummary saved to {csv_path}")
 else:
     print("No results found to summarize")

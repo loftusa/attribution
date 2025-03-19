@@ -1,3 +1,4 @@
+#%%
 import gzip
 import os
 import re
@@ -13,7 +14,7 @@ from torchtyping import TensorType
 from dataclasses import dataclass
 from functools import partial
 import torch
-
+from datasets import load_dataset
 
 
 PROMPT_TEMPLATE = '''\
@@ -22,11 +23,12 @@ function: {code}
 input: {input}
 output: {output}'''
 
-
 class CruxEvalUtil:
     def __init__(self, df: pl.DataFrame = None):
         if df is None:
-            df = pl.read_ndjson('hf://datasets/cruxeval-org/cruxeval/test.jsonl')
+            dataset = load_dataset("cruxeval-org/cruxeval")
+            df = dataset['test'].to_polars()
+            self.dataset = dataset
         self.df = df
         self.prompt = PROMPT_TEMPLATE
 

@@ -22,7 +22,7 @@ import os
 import json
 import torch
 import einops
-import plotly.express as px # type: ignore
+import plotly.express as px
 from pathlib import Path
 from nnsight import LanguageModel
 from bigcode_eval.tasks import get_task
@@ -35,7 +35,7 @@ import sys
 
 from attribution.utils import CruxEvalUtil, CausalTracingInput, causal_trace, format_template
 
-from guidance import models, gen, guidance # type: ignore
+from guidance import models, gen, guidance
 
 # Parse command line arguments
 parser = argparse.ArgumentParser(description='Evaluate CruxEval problems with a specified model')
@@ -79,7 +79,9 @@ MODELS = {
     "instruct": "allenai/OLMo-2-1124-7B-Instruct",
     "rm": "allenai/OLMo-2-1124-7B-RM",
     "base13b": "allenai/OLMo-2-1124-13B",
-    "dpo13b": "allenai/OLMo-2-1124-13B-DPO"
+    "dpo13b": "allenai/OLMo-2-1124-13B-DPO",
+    "instruct13b": "allenai/OLMo-2-1124-13B-Instruct",
+    "base32b": "allenai/OLMo-2-0325-32B"
 }
 
 # Get model name from command line or use default
@@ -108,7 +110,7 @@ print(f"Loading model: {model_name}")
 revision = args.revision
 
 # Load tokenizer with optimized settings
-tokenizer = AutoTokenizer.from_pretrained(model_name, revision=revision)
+tokenizer = AutoTokenizer.from_pretrained(model_name, padding_side='left', use_fast=True, revision=revision)
 
 # Initialize model with optimized settings
 model = AutoModelForCausalLM.from_pretrained(
@@ -136,44 +138,42 @@ formatted_prompt = prompt.replace('{input}', true_in).replace('{output}', '')
 print(formatted_prompt)
 
 #%%
-print("SANITY CHECK", "\n---------------")
-prompt, true_in, true_out = ce.output_full(0)
-print(prompt, '\n----')
+# print("SANITY CHECK", "\n---------------")
+# prompt, true_in, true_out = ce.output_full(0)
+# print(prompt, '\n----')
 
-formatted_prompt = prompt.replace('{input}', true_in).replace('{output}', '')
-print(f"Formatted prompt: {formatted_prompt}", '\n----')
+# formatted_prompt = prompt.replace('{input}', true_in).replace('{output}', '')
+# print(f"Formatted prompt: {formatted_prompt}", '\n----')
 
-tokens = tokenizer.encode(formatted_prompt)
-print(f"Tokens: {tokens}", '\n----')
+# tokens = tokenizer.encode(formatted_prompt)
+# print(f"Tokens: {tokens}", '\n----')
 
-input_id_length = len(tokens)
+# input_id_length = len(tokens)
 
-inputs = tokenizer(formatted_prompt, return_tensors='pt', padding=True, truncation=True, max_length=2048).to(model.device)
-with torch.no_grad():
-    outputs = model.generate(
-        inputs.input_ids, 
-        attention_mask=inputs.attention_mask,
-        max_new_tokens=100,
-        do_sample=True,
-        temperature=0.2,
-        pad_token_id=tokenizer.eos_token_id,
-        use_cache=True,
-        early_stopping=True
-    )
-print(outputs, '\n----')
+# inputs = tokenizer(formatted_prompt, return_tensors='pt', padding=True, truncation=True, max_length=2048).to(model.device)
+# with torch.no_grad():
+#     outputs = model.generate(
+#         inputs.input_ids, 
+#         attention_mask=inputs.attention_mask,
+#         max_new_tokens=100,
+#         do_sample=True,
+#         temperature=0.2,
+#         pad_token_id=tokenizer.eos_token_id,
+#         use_cache=True,
+#         early_stopping=True
+#     )
+# print(outputs, '\n----')
 
-input_length = input_id_length - 1
-print(f"Input length: {input_length}", '\n----')
+# input_length = input_id_length - 1
+# print(f"Input length: {input_length}", '\n----')
 
-generated_tokens = outputs[0]
-print(f"Generated tokens: {generated_tokens}", '\n----')
-print(f"generated text: {tokenizer.decode(generated_tokens, skip_special_tokens=True)}", '\n----')
+# generated_tokens = outputs[0]
+# print(f"Generated tokens: {generated_tokens}", '\n----')
+# print(f"generated text: {tokenizer.decode(generated_tokens, skip_special_tokens=True)}", '\n----')
 
-clipped = generated_tokens[input_length:]
-print(f"clipped: {clipped}", '\n----')
-print(f"clipped text: {tokenizer.decode(clipped, skip_special_tokens=True)}", '\n----')
-
-
+# clipped = generated_tokens[input_length:]
+# print(f"clipped: {clipped}", '\n----')
+# print(f"clipped text: {tokenizer.decode(clipped, skip_special_tokens=True)}", '\n----')
 
 
 #%%
@@ -297,7 +297,7 @@ def evaluate_batch(model, tokenizer, problem_ids: list[int], max_tokens: int = 1
             input_length = input_ids_lengths[i] - 1  # -1 because we want to start extracting from the next token
             
             # Extract only the newly generated tokens for this example
-            generated_tokens = output[input_length:]
+            generated_tokens = output
             full_generated_text = tokenizer.decode(generated_tokens, skip_special_tokens=True)
             
             # Extract only the part after "output:" if it exists
@@ -317,9 +317,9 @@ def evaluate_batch(model, tokenizer, problem_ids: list[int], max_tokens: int = 1
             if is_correct or problem_id % 50 == 0:
                 print(f"\nProblem ID: {problem_id}")
                 print(f"Input: {repr(true_in)}")
-                print(f"Full Generated: {full_generated_text}")
+                print(f"Full Generated: {full_generated_text}", '\n')
                 print(f"Extracted Output: {generated}")
-                print(f"Expected: {true_out}")
+                print(f"Ground truth: {true_out}")
                 print(f"Correct: {is_correct}")
             
             batch_results.append((is_correct, full_generated_text, generated, true_out))
@@ -336,7 +336,7 @@ def evaluate_batch(model, tokenizer, problem_ids: list[int], max_tokens: int = 1
 num_problems = args.num_problems
 batch_size = args.batch_size  # Process multiple problems at once
 results = []
-checkpoint_file = os.path.join(args.output_dir, f"cruxeval_checkpoint_{model_short_name}.json")
+checkpoint_file = os.path.join(args.output_dir, f"cruxeval_checkpoint_{model_name}_{revision}.json")
 
 # Check if checkpoint exists to resume from previous run
 try:
@@ -378,6 +378,8 @@ for batch_start in tqdm(range(start_idx, num_problems, adjusted_batch_size)):
     results.extend(formatted_results)
     
     # Save checkpoint after each batch
+    # make checkpoint file directory if it doesn't exist
+    os.makedirs(os.path.dirname(checkpoint_file), exist_ok=True)
     with open(checkpoint_file, "w") as f:
         json.dump({"results": results}, f)
     
@@ -405,7 +407,9 @@ accuracy = correct_count / num_problems
 print(f"Final accuracy: {correct_count}/{num_problems} ({accuracy*100:.2f}%)")
 
 # Save final results
-results_file = os.path.join(args.output_dir, f"cruxeval_results_{model_short_name}.json")
+results_file = os.path.join(args.output_dir, f"cruxeval_results_{model_name}_{revision}.json")
+# make results file directory if it doesn't exist
+os.makedirs(os.path.dirname(results_file), exist_ok=True)
 with open(results_file, "w") as f:
     json.dump(results, f)
 print(f"Results saved to {results_file}")
