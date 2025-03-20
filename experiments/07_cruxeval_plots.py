@@ -7,12 +7,12 @@ import numpy as np
 from collections import Counter
 # Plotting code - reads from the saved JSON file
 # Load the saved results
-results_file = Path("/home/locallofty/code_llm/attribution/data/cruxeval_true_pass_results.json")
+results_file = Path("/home/lofty/code_llm/attribution/data/cruxeval_true_pass_results.json")
 with open(results_file, 'r') as f:
     all_data = json.load(f)
 
 # Create a directory for plots
-plots_dir = Path("/home/locallofty/code_llm/attribution/data/cruxeval_plots")
+plots_dir = Path("/home/lofty/code_llm/attribution/data/cruxeval_plots")
 plots_dir.mkdir(exist_ok=True)
 
 # Extract model data

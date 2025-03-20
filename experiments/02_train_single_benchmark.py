@@ -107,7 +107,7 @@ if __name__ == "__main__":
         RESULTS_PATH.mkdir(parents=True, exist_ok=True)
         cmd = [
             "python3",
-            "/home/locallofty/code_llm/MultiPL-E/automodel.py",
+            "/home/lofty/code_llm/MultiPL-E/automodel.py",
             "--name",
             MODEL_NAME,
             "--revision",

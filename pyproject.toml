@@ -13,7 +13,6 @@ dependencies = [
     "editables>=0.5",
     "evalplus>=0.3.1",
     "fastai>=2.7.18",
-    "flash-attn>=2.7.0.post2",
     "gpustat>=1.1.1",
     "guidance>=0.2.0",
     "hatchling>=1.26.3",
@@ -50,4 +49,4 @@ build-backend = "hatchling.build"
 packages = ["src/attribution"]
 
 [tool.uv.sources]
-bigcode-eval = { path = "/home/locallofty/code_llm/bigcode-evaluation-harness", editable = true }
+bigcode-eval = { path = "/home/lofty/code_llm/bigcode-evaluation-harness", editable = true }

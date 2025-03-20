@@ -35,7 +35,7 @@ args = parser.parse_args()
 # Update the variables that were hardcoded
 model_name = args.model
 generate_new_generations = args.generate_new
-base_dir = Path("/home/locallofty/code_llm/attribution/results") / model_name 
+base_dir = Path("/home/lofty/code_llm/attribution/results") / model_name 
 
 # Create the directory if it doesn't exist
 base_dir.mkdir(parents=True, exist_ok=True)

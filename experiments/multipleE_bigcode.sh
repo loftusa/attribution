@@ -13,7 +13,7 @@ MODEL="nuprl/MultiPL-T-StarCoderBase_15b"
 TASK="multiple-r"
 TEMPERATURE="0.8"
 ALLOW_CODE_EXECUTION="--allow_code_execution"
-SAVE_LOCATION="/home/locallofty/code_llm/attribution/results/nuprl/MultiPL-T-StarCoderBase_15b_R_QUESTIONS_ATTEMPT_4"
+SAVE_LOCATION="/home/lofty/code_llm/attribution/results/nuprl/MultiPL-T-StarCoderBase_15b_R_QUESTIONS_ATTEMPT_4"
 N_SAMPLES="200"  # number of generations for each problem
 LIMIT="200"  # number of problems
 BATCH_SIZE="8"
@@ -25,7 +25,7 @@ mkdir -p $GENERATIONS_PATH
 cd $GENERATIONS_PATH
 
 # Run accelerate command for base model
-accelerate launch /home/locallofty/code_llm/bigcode-evaluation-harness/main.py \
+accelerate launch /home/lofty/code_llm/bigcode-evaluation-harness/main.py \
   --model $MODEL \
   --tasks $TASK \
   --max_length_generation 650 \
@@ -66,7 +66,7 @@ for REVISION in "${REVISIONS[@]}"; do
   cd $GENERATIONS_PATH
 
   # Run accelerate command
-  accelerate launch /home/locallofty/code_llm/bigcode-evaluation-harness/main.py \
+  accelerate launch /home/lofty/code_llm/bigcode-evaluation-harness/main.py \
     --model $MODEL \
     --tasks $TASK \
     --max_length_generation 650 \

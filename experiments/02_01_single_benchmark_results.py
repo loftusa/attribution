@@ -97,7 +97,7 @@ if __name__ == "__main__":
       )
       cmd = [
           "python",
-          "/home/locallofty/code_llm/MultiPL-E/pass_k.py",
+          "/home/lofty/code_llm/MultiPL-E/pass_k.py",
           f"{RESULTS_PATH}",
           "-k", "20",
       ]

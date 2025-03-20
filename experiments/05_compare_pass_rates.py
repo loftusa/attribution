@@ -21,7 +21,7 @@ def load_pass_rates(pass_rates_path):
 
 # Directory where each model's results are stored.
 # Adjust as needed if your files are organized differently.
-results_root = "/home/locallofty/code_llm/attribution/results"
+results_root = "/home/lofty/code_llm/attribution/results"
 
 # Models to analyze (excluding the one with "-RM")
 models = [

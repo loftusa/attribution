@@ -7,7 +7,7 @@ import numpy as np
 from collections import Counter
 
 # Base results directory
-base_dir = Path("/home/locallofty/code_llm/attribution/results/allenai")
+base_dir = Path("/home/lofty/code_llm/attribution/results/allenai")
 
 # Load the task and dataset for ground truth
 task = get_task("cruxeval")

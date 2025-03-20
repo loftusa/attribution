@@ -1,4 +1,5 @@
 version = 1
+revision = 1
 requires-python = ">=3.12"
 resolution-markers = [
     "python_full_version >= '3.13' and sys_platform == 'linux'",
@@ -311,7 +312,6 @@ dependencies = [
     { name = "editables" },
     { name = "evalplus" },
     { name = "fastai" },
-    { name = "flash-attn" },
     { name = "gpustat" },
     { name = "guidance" },
     { name = "hatchling" },
@@ -343,13 +343,12 @@ dev = [
 requires-dist = [
     { name = "accelerate", specifier = ">=1.0.1" },
     { name = "ai2-olmo", specifier = ">=0.2.2" },
-    { name = "bigcode-eval", editable = "../../../../../home/locallofty/code_llm/bigcode-evaluation-harness" },
+    { name = "bigcode-eval", editable = "../../../../../home/lofty/code_llm/bigcode-evaluation-harness" },
     { name = "datasets", specifier = ">=3.1.0" },
     { name = "dolma", specifier = ">=1.0.8" },
     { name = "editables", specifier = ">=0.5" },
     { name = "evalplus", specifier = ">=0.3.1" },
     { name = "fastai", specifier = ">=2.7.18" },
-    { name = "flash-attn", specifier = ">=2.7.0.post2" },
     { name = "gpustat", specifier = ">=1.1.1" },
     { name = "guidance", specifier = ">=0.2.0" },
     { name = "hatchling", specifier = ">=1.26.3" },
@@ -455,7 +454,7 @@ wheels = [
 [[package]]
 name = "bigcode-eval"
 version = "0.0.0"
-source = { editable = "../../../../../home/locallofty/code_llm/bigcode-evaluation-harness" }
+source = { editable = "../../../../../home/lofty/code_llm/bigcode-evaluation-harness" }
 dependencies = [
     { name = "accelerate" },
     { name = "datasets" },
@@ -496,6 +495,7 @@ requires-dist = [
     { name = "transformers", specifier = ">=4.25.1" },
     { name = "xgboost", marker = "extra == 'ds1000'", specifier = "==1.6.2" },
 ]
+provides-extras = ["ds1000"]
 
 [[package]]
 name = "bleach"
@@ -1248,16 +1248,6 @@ dependencies = [
     { name = "termcolor" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/6b/b6/82c7e601d6d3c3278c40b7bd35e17e82aa227f050aa9f66cb7b7fce29471/fire-0.7.0.tar.gz", hash = "sha256:961550f07936eaf65ad1dc8360f2b2bf8408fad46abbfa4d2a3794f8d2a95cdf", size = 87189 }
-
-[[package]]
-name = "flash-attn"
-version = "2.7.3"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "einops" },
-    { name = "torch" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/81/f5/59b0727da8c041c0e5eb9feba068e27c88b2cead0e03083c5c6d444d004b/flash_attn-2.7.3.tar.gz", hash = "sha256:9078cf92355c4e3f77f01626ece8c71aad26bdbfa827c2af8c6ac5632cc1cc58", size = 3223463 }
 
 [[package]]
 name = "fonttools"
