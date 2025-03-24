@@ -108,7 +108,7 @@ ce = CruxEvalUtil()
 #%%
 print(f"Loading model: {model_name}")
 revision = args.revision
-
+#%%
 # Load tokenizer with optimized settings
 tokenizer = AutoTokenizer.from_pretrained(model_name, padding_side='left', use_fast=True, revision=revision)
 
